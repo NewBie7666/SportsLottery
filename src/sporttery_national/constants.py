@@ -16,6 +16,15 @@ PREDICTION_FIELDS = [
     "model_version", "feature_version", "created_at",
 ]
 
+ADJUSTED_PREDICTION_EXTRA_FIELDS = [
+    "experiment_name", "adjustment_params",
+    "adjusted_top1_pick", "adjusted_top1_label", "adjusted_second_pick",
+    "adjusted_probability_gap", "adjusted_confidence",
+    "adjustment_note", "adjusted_created_at",
+]
+
+ADJUSTED_PREDICTION_FIELDS = PREDICTION_FIELDS + ADJUSTED_PREDICTION_EXTRA_FIELDS
+
 SETTLEMENT_FIELDS = [
     "issue_id", "match_id", "home_team", "away_team", "competition",
     "home_score", "away_score", "actual_result", "actual_label",

@@ -40,6 +40,9 @@ def load_predictions_csv(path: str | Path) -> list[dict]:
             row["match_id"] = _as_key_part(row.get("match_id"))
             row["top1_pick"] = _parse_label(row.get("top1_pick"), "top1_pick")
             row["second_pick"] = _parse_label(row.get("second_pick"), "second_pick")
+            if row.get("adjusted_top1_pick") not in (None, ""):
+                _require_adjusted_prob_fields(row)
+                row["adjusted_top1_pick"] = _parse_label(row.get("adjusted_top1_pick"), "adjusted_top1_pick")
             for field in (
                 "probability_gap",
                 "base_home_win_prob",
@@ -99,6 +102,11 @@ def settle_predictions(predictions: list[dict], results: list[dict]) -> list[dic
         actual_result = _parse_label(result["actual_result"], "actual_result")
         top1_pick = _parse_label(prediction["top1_pick"], "top1_pick")
         second_pick = _parse_label(prediction["second_pick"], "second_pick")
+        if prediction.get("adjusted_top1_pick") not in (None, ""):
+            _require_adjusted_prob_fields(prediction)
+            adjusted_top1_pick = _parse_label(prediction["adjusted_top1_pick"], "adjusted_top1_pick")
+        else:
+            adjusted_top1_pick = top1_pick
         base_probs = {
             LABEL_HOME: _parse_float(prediction["base_home_win_prob"], "base_home_win_prob"),
             LABEL_DRAW: _parse_float(prediction["base_draw_prob"], "base_draw_prob"),
@@ -133,7 +141,7 @@ def settle_predictions(predictions: list[dict], results: list[dict]) -> list[dic
             "adjusted_draw_prob": adjusted_probs[LABEL_DRAW],
             "adjusted_away_win_prob": adjusted_probs[LABEL_AWAY],
             "base_hit": top1_pick == actual_result,
-            "adjusted_hit": top1_pick == actual_result,
+            "adjusted_hit": adjusted_top1_pick == actual_result,
             "base_actual_prob": base_actual_prob,
             "adjusted_actual_prob": adjusted_actual_prob,
             "base_log_loss": compute_log_loss(base_actual_prob),
@@ -307,6 +315,15 @@ def _parse_float(value: object, field: str) -> float:
         return float(str(value).strip())
     except (TypeError, ValueError):
         raise ValueError(f"{field} must be a number") from None
+
+
+def _require_adjusted_prob_fields(row: dict) -> None:
+    required = ("adjusted_home_win_prob", "adjusted_draw_prob", "adjusted_away_win_prob")
+    missing = [field for field in required if row.get(field) in (None, "")]
+    if missing:
+        raise ValueError(f"adjusted_top1_pick requires adjusted probability fields: {', '.join(missing)}")
+    for field in required:
+        _parse_float(row.get(field), field)
 
 
 def _avg(rows: list[dict], field: str) -> float:

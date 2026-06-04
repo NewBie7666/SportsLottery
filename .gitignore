@@ -33,3 +33,9 @@ reports/predictions/*
 !reports/settlements/
 reports/settlements/*
 !reports/settlements/.gitkeep
+!reports/adjustments/
+reports/adjustments/*
+!reports/adjustments/.gitkeep
+!reports/settlements_adjusted/
+reports/settlements_adjusted/*
+!reports/settlements_adjusted/.gitkeep

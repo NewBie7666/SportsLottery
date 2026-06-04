@@ -270,3 +270,63 @@ python -m sporttery_national.cli backtest --data data/processed/national_matches
 - `recent_windows`：查看 2000 年以来、最近 10 年、最近 5 年的表现变化。
 
 Markdown 报告中的 competition 分组只展示样本数较大的赛事，完整赛事表现以 `backtest_summary.json` 为准。
+
+## V1.4 本地参数实验器
+
+V1.4 新增 `adjust` 命令，用于在不修改 base 模型、不重训、不写回训练数据的前提下，对预测概率做本地后处理实验。它不是网页调参功能，也不开放给用户系统。
+
+参数文件示例：
+
+```json
+{
+  "experiment_name": "draw_plus_market_light",
+  "draw_bias": 0.03,
+  "upset_bias": 0.02,
+  "market_weight": 0.20,
+  "temperature": 1.05
+}
+```
+
+参数含义：
+
+- `experiment_name`：实验名称，必须是非空字符串。
+- `draw_bias`：提高或降低平局概率，范围 `-0.10` 到 `0.10`。
+- `upset_bias`：提高冷门方向概率，范围 `0.00` 到 `0.10`。
+- `market_weight`：融合官方隐含概率，范围 `0.00` 到 `1.00`；odds 缺失时跳过并记录 note。
+- `temperature`：概率温度缩放，范围 `0.70` 到 `1.50`；小于 1 更尖锐，大于 1 更平滑。
+
+`apply_adjustment(base_probs, params, implied_probs)` 统一返回 `home/draw/away/note`。其中 `home/draw/away` 是归一化后的三项概率，`note` 只是逐场说明，不参与概率求和、范围检查或 top1 排序。
+
+运行流程：
+
+```powershell
+.\scripts\predict_sample.ps1
+.\scripts\adjust_sample.ps1
+.\scripts\settle_adjusted_sample.ps1
+```
+
+也可以直接运行 CLI：
+
+```powershell
+python -m sporttery_national.cli adjust --predictions reports/predictions/predictions.csv --params configs/adjustment/sample_params.json --output reports/adjustments
+```
+
+输出文件：
+
+- `reports/adjustments/adjusted_predictions.csv`
+- `reports/adjustments/adjusted_predictions.json`
+- `reports/adjustments/adjustment_report.md`
+
+`adjusted_predictions` 会保留原始 `base_*` 和原始 `top1_*` 字段，并新增 `adjusted_top1_pick`、`adjusted_top1_label`、`adjusted_second_pick`、`adjusted_probability_gap`、`adjusted_confidence` 等实验字段。`base_*` 永远不被覆盖。
+
+`adjustment_report.md` 会统计 top1 改变场次、odds 缺失导致 `market_weight` 未生效的场次，以及 `avg_abs_home_shift`、`avg_abs_draw_shift`、`avg_abs_away_shift`、`avg_abs_prob_shift` 等平均概率变动幅度。`changed_picks` 只统计 `top1_pick != adjusted_top1_pick` 的比赛，概率改变但首选不变不会计入。
+
+结算 adjusted 结果：
+
+```powershell
+python -m sporttery_national.cli settle --predictions reports/adjustments/adjusted_predictions.csv --results data/raw/results/sample_results.csv --output reports/settlements_adjusted
+```
+
+当 settlement 输入中存在 `adjusted_top1_pick` 时，必须同时存在可解析的 `adjusted_home_win_prob`、`adjusted_draw_prob`、`adjusted_away_win_prob`；否则直接失败。校验通过后，`adjusted_hit` 使用 adjusted top1 判断，`base_hit` 仍使用原始 `top1_pick`。这样可以比较 base vs adjusted。
+
+短期 adjusted 表现更好不代表可以直接写回模型。V1.4 的定位是本地研究工具，用大量样本检验某种后处理策略是否稳定改善表现。

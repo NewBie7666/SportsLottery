@@ -30,7 +30,8 @@ def predict_fixtures(fixtures: list[dict], model_dir: str | Path, history_path: 
     for fixture in fixtures:
         features = builder.build_before_match({"home_team": fixture["home_team"], "away_team": fixture["away_team"], "date": fixture["date"], "competition": fixture.get("competition", ""), "neutral": fixture.get("neutral", False)})
         base = _probabilities(features)
-        adjusted = apply_adjustment(base)
+        adjusted_raw = apply_adjustment(base)
+        adjusted = {key: adjusted_raw[key] for key in ("home", "draw", "away")}
         ranking = rank_outcomes(adjusted)
         top_label = ranking["top1_pick"]
         confidence = confidence_from_prediction(

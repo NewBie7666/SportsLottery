@@ -1,0 +1,7 @@
+{
+  "experiment_name": "draw_plus_market_light",
+  "draw_bias": 0.03,
+  "upset_bias": 0.02,
+  "market_weight": 0.20,
+  "temperature": 1.05
+}

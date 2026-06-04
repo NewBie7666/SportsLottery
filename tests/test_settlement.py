@@ -115,6 +115,29 @@ class SettlementTests(unittest.TestCase):
         self.assertFalse(rows[0]["adjusted_hit"])
         self.assertEqual(summary["error_count"], 1)
 
+    def test_adjusted_top1_pick_is_used_when_present(self) -> None:
+        prediction = _prediction()
+        prediction["top1_pick"] = "0"
+        prediction["adjusted_top1_pick"] = "3"
+        rows = settle_predictions([prediction], [_result()])
+        self.assertFalse(rows[0]["base_hit"])
+        self.assertTrue(rows[0]["adjusted_hit"])
+
+    def test_adjusted_top1_requires_adjusted_probability_fields(self) -> None:
+        prediction = _prediction()
+        prediction["adjusted_top1_pick"] = "3"
+        del prediction["adjusted_home_win_prob"]
+        with self.assertRaisesRegex(ValueError, "adjusted_top1_pick requires adjusted probability fields.*adjusted_home_win_prob"):
+            settle_predictions([prediction], [_result()])
+
+    def test_adjusted_top1_missing_uses_base_top1_fallback(self) -> None:
+        prediction = _prediction()
+        prediction.pop("adjusted_top1_pick", None)
+        prediction["top1_pick"] = "3"
+        rows = settle_predictions([prediction], [_result()])
+        self.assertTrue(rows[0]["base_hit"])
+        self.assertTrue(rows[0]["adjusted_hit"])
+
 
 def _prediction() -> dict:
     return {
