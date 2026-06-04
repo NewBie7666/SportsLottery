@@ -27,7 +27,7 @@ class BacktestTests(unittest.TestCase):
                     "neutral": False,
                     "result": 3 if 1 + (index % 3) > index % 2 else 1,
                 })
-            data = root / "national_matches.parquet"
+            data = root / "national_matches.jsonl"
             write_records(data, rows)
             summary = backtest(data, root / "reports", min_history=5)
             self.assertIn("log_loss", summary)

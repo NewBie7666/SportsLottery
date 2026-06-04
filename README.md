@@ -13,9 +13,43 @@
 - V1 不把官方奖金作为训练标签。
 - V1 的调参接口只是占位，`adjusted_*` 概率等于 `base_*` 概率。
 
-## 数据来源
+## 获取国家队历史数据
 
-历史国家队赛果建议使用 `openfootball/internationals` 一类公开国家队历史比赛数据。导入器支持递归读取 `.csv` 和简单 Football.TXT 风格 `.txt` 文件，并会排除 U23、Olympic team、B team、XI、Select、All Stars 等非成年国家队记录。
+推荐数据源：https://github.com/openfootball/internationals
+
+同步真实历史数据：
+
+```powershell
+python -m sporttery_national.cli fetch-history --source openfootball --output data/raw/internationals/openfootball-internationals
+```
+
+导入真实历史数据：
+
+```powershell
+python -m sporttery_national.cli import-history --source openfootball --input data/raw/internationals/openfootball-internationals --output data/processed/national_matches.jsonl
+```
+
+训练模型：
+
+```powershell
+python -m sporttery_national.cli train --data data/processed/national_matches.jsonl --model-dir models/national
+```
+
+回测：
+
+```powershell
+python -m sporttery_national.cli backtest --data data/processed/national_matches.jsonl --model-dir models/national --output reports/backtests
+```
+
+导入会生成 `reports/import_history_summary.md`，解析失败和未知队名会写入 `reports/import_errors/`。
+
+## CSV 数据来源
+
+如果暂时不用 openfootball，也可以继续导入用户提供的简化 CSV：
+
+```powershell
+python -m sporttery_national.cli import-history --source csv --input data/raw/internationals/sample.csv --output data/processed/national_matches.jsonl
+```
 
 当期体彩比赛由手动 CSV 输入。必填列：
 
@@ -32,14 +66,15 @@ issue_id,competition,neutral,venue,notes
 ## CLI
 
 ```powershell
-python -m sporttery_national.cli import-history --input data/raw/internationals --output data/processed/national_matches.parquet
-python -m sporttery_national.cli train --data data/processed/national_matches.parquet --model-dir models/national
-python -m sporttery_national.cli backtest --data data/processed/national_matches.parquet --model-dir models/national --output reports/backtests
+python -m sporttery_national.cli fetch-history --source openfootball --output data/raw/internationals/openfootball-internationals
+python -m sporttery_national.cli import-history --source openfootball --input data/raw/internationals/openfootball-internationals --output data/processed/national_matches.jsonl
+python -m sporttery_national.cli train --data data/processed/national_matches.jsonl --model-dir models/national
+python -m sporttery_national.cli backtest --data data/processed/national_matches.jsonl --model-dir models/national --output reports/backtests
 python -m sporttery_national.cli predict --fixtures data/raw/lottery_fixtures/current_issue.csv --model-dir models/national --output reports/predictions
 python -m sporttery_national.cli teams --query 德国
 ```
 
-当前实现仅使用 Python 标准库。若安装 `pandas + pyarrow`，后续可以把存储层替换为真正 Parquet；当前 `.parquet` 路径使用内部 JSONL 记录格式，CLI 读写保持稳定。
+当前实现仅使用 Python 标准库。处理后历史数据明确保存为 JSONL，不伪装成 Parquet。
 
 ## 预测输出字段
 

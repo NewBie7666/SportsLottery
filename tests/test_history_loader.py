@@ -19,10 +19,10 @@ class HistoryLoaderTests(unittest.TestCase):
                 "2024-01-02,Germany U23,France,1,1,Friendly,false,Berlin\n",
                 encoding="utf-8",
             )
-            out = root / "national_matches.parquet"
-            count = import_history(raw, out)
+            out = root / "national_matches.jsonl"
+            summary = import_history(raw, out, source="csv", report_dir=root / "reports")
             rows = read_records(out)
-            self.assertEqual(count, 1)
+            self.assertEqual(summary["final_matches"], 1)
             self.assertEqual(rows[0]["home_team"], "Germany")
             self.assertEqual(rows[0]["away_team"], "United States")
             self.assertEqual(rows[0]["result"], 3)

@@ -9,6 +9,7 @@ from sporttery_national.export.csv_exporter import write_predictions_csv
 from sporttery_national.export.json_exporter import write_predictions_json
 from sporttery_national.export.markdown_report import write_markdown_report
 from sporttery_national.ingest.fixture_loader import load_fixtures
+from sporttery_national.ingest.history_fetcher import fetch_history
 from sporttery_national.ingest.history_loader import import_history
 from sporttery_national.mapping.team_normalizer import TeamNormalizer
 from sporttery_national.models.predictor import predict_fixtures
@@ -19,10 +20,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sporttery-national")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    p = sub.add_parser("fetch-history")
+    p.add_argument("--source", choices=["openfootball"], required=True)
+    p.add_argument("--output", required=True)
+
     p = sub.add_parser("import-history")
+    p.add_argument("--source", choices=["csv", "openfootball"], default="csv")
     p.add_argument("--input", required=True)
     p.add_argument("--output", required=True)
     p.add_argument("--aliases")
+    p.add_argument("--report-dir", default="reports")
 
     p = sub.add_parser("train")
     p.add_argument("--data", required=True)
@@ -45,9 +52,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--aliases")
 
     args = parser.parse_args(argv)
-    if args.command == "import-history":
-        count = import_history(args.input, args.output, args.aliases)
-        print(f"Imported {count} matches to {args.output}")
+    if args.command == "fetch-history":
+        print(fetch_history(args.source, args.output))
+    elif args.command == "import-history":
+        summary = import_history(args.input, args.output, args.aliases, source=args.source, report_dir=args.report_dir)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "train":
         print(json.dumps(train_model(args.data, args.model_dir), ensure_ascii=False, indent=2))
     elif args.command == "backtest":

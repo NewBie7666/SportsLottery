@@ -42,6 +42,9 @@ class TeamNormalizer:
         known = self._key(name) in self.aliases
         return {"query": name, "team": normalized, "known": known, "suggestions": self.suggestions(name)}
 
+    def is_unknown(self, name: str) -> bool:
+        return self._key(name) not in self.aliases
+
     @staticmethod
     def _key(value: str) -> str:
         return " ".join(value.strip().lower().replace("　", " ").split())
