@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -131,10 +132,55 @@ class AdjustmentTests(unittest.TestCase):
             self.assertEqual(summary["experiment_name"], "test")
             self.assertTrue((root / "out" / "adjusted_predictions.csv").exists())
             self.assertTrue((root / "out" / "adjusted_predictions.json").exists())
+            self.assertTrue((root / "out" / "adjustment_summary.json").exists())
+            adjusted_json = json.loads((root / "out" / "adjusted_predictions.json").read_text(encoding="utf-8"))
+            adjusted_row = adjusted_json[0]
+            self.assertEqual(adjusted_row["issue_id"], "202606")
+            self.assertEqual(adjusted_row["match_id"], "001")
+            self.assertIsInstance(adjusted_row["top1_pick"], int)
+            self.assertIsInstance(adjusted_row["second_pick"], int)
+            self.assertIsInstance(adjusted_row["adjusted_top1_pick"], int)
+            self.assertIsInstance(adjusted_row["adjusted_second_pick"], int)
+            self.assertIsInstance(adjusted_row["odds_home"], float)
+            self.assertIsInstance(adjusted_row["base_home_win_prob"], float)
+            self.assertIsInstance(adjusted_row["adjusted_home_win_prob"], float)
+            self.assertIsInstance(adjusted_row["probability_gap"], float)
+            self.assertIsInstance(adjusted_row["adjustment_params"], dict)
+            self.assert_no_nan_or_inf(adjusted_json)
+            summary_json = json.loads((root / "out" / "adjustment_summary.json").read_text(encoding="utf-8"))
+            self.assertIsInstance(summary_json["adjustment_params"], dict)
+            self.assertIn("avg_abs_prob_shift", summary_json)
+            self.assert_no_nan_or_inf(summary_json)
             report = (root / "out" / "adjustment_report.md").read_text(encoding="utf-8")
             self.assertIn("仅供概率研究，不承诺中奖或盈利。", report)
             for word in ("必中", "稳赚", "保证中奖", "推荐下注", "稳胆", "必买"):
                 self.assertNotIn(word, report)
+
+    def test_adjusted_prediction_json_writes_blank_numbers_as_null(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.csv"
+            params = root / "params.json"
+            row = _prediction_row()
+            row["odds_away"] = ""
+            row["implied_away_win_prob"] = ""
+            _write_predictions(predictions, [row])
+            params.write_text(json.dumps({"experiment_name": "test", "market_weight": 0.5}), encoding="utf-8")
+            run_adjustment_experiment(predictions, params, root / "out")
+            adjusted = json.loads((root / "out" / "adjusted_predictions.json").read_text(encoding="utf-8"))[0]
+            self.assertIsNone(adjusted["odds_away"])
+            self.assertIsNone(adjusted["implied_away_win_prob"])
+            self.assertIn(MARKET_SKIPPED_NOTE, adjusted["adjustment_note"])
+
+    def assert_no_nan_or_inf(self, value: object) -> None:
+        if isinstance(value, dict):
+            for item in value.values():
+                self.assert_no_nan_or_inf(item)
+        elif isinstance(value, list):
+            for item in value:
+                self.assert_no_nan_or_inf(item)
+        elif isinstance(value, float):
+            self.assertFalse(math.isnan(value) or math.isinf(value))
 
     def test_settle_reads_adjusted_predictions(self) -> None:
         prediction = _prediction_row()

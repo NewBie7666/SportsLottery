@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import csv
-import json
 import math
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
@@ -12,6 +11,7 @@ from sporttery_national.features.feature_builder import FeatureBuilder
 from sporttery_national.models.prediction_explain import confidence_from_prediction, rank_outcomes
 from sporttery_national.models.predictor import _probabilities
 from sporttery_national.models.trainer import FEATURE_VERSION, MODEL_VERSION
+from sporttery_national.utils.json_io import dumps_json, write_json
 from sporttery_national.utils.storage import read_records
 
 FORBIDDEN_BACKTEST_WORDS = ["必中", "稳赚", "保证中奖", "推荐下注", "稳胆", "必买"]
@@ -158,7 +158,7 @@ def _write_details_csv(path: Path, details: list[dict]) -> None:
 
 
 def _write_json(path: Path, data: object) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(path, data)
 
 
 def _write_markdown_report(path: Path, summary: dict, details: list[dict]) -> None:
@@ -238,7 +238,7 @@ def _write_markdown_report(path: Path, summary: dict, details: list[dict]) -> No
     for item in summary["calibration_bins"]:
         lines.append(
             f"| {item['bin']} | {item['matches']} | {_fmt(item['avg_top1_prob'])} | {_fmt(item['accuracy'])} | "
-            f"{_fmt(item['avg_log_loss'])} | {json.dumps(item['confidence_distribution'], ensure_ascii=False)} |"
+            f"{_fmt(item['avg_log_loss'])} | {dumps_json(item['confidence_distribution'], indent=None)} |"
         )
 
     lines.extend([

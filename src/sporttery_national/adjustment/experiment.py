@@ -10,6 +10,7 @@ from sporttery_national.adjustment.adjuster import MARKET_SKIPPED_NOTE, apply_ad
 from sporttery_national.adjustment.params import load_params
 from sporttery_national.constants import ADJUSTED_PREDICTION_FIELDS, LABEL_NAMES, PREDICTION_FIELDS
 from sporttery_national.models.prediction_explain import confidence_from_prediction, rank_outcomes
+from sporttery_national.utils.json_io import dumps_json, write_json
 from sporttery_national.utils.validation import require_columns
 
 FORBIDDEN_ADJUSTMENT_WORDS = ["必中", "稳赚", "保证中奖", "推荐下注", "稳胆", "必买"]
@@ -24,6 +25,7 @@ def run_adjustment_experiment(predictions_path: str | Path, params_path: str | P
     _write_csv(output / "adjusted_predictions.csv", adjusted_rows)
     _write_json(output / "adjusted_predictions.json", adjusted_rows)
     summary = summarize_adjustments(adjusted_rows, params)
+    write_json(output / "adjustment_summary.json", summary)
     _write_markdown(output / "adjustment_report.md", summary, adjusted_rows)
     return summary
 
@@ -54,7 +56,7 @@ def adjust_prediction_rows(rows: list[dict], params: dict) -> list[dict]:
             "adjusted_draw_prob": adjusted["draw"],
             "adjusted_away_win_prob": adjusted["away"],
             "experiment_name": params["experiment_name"],
-            "adjustment_params": json.dumps(params, ensure_ascii=False, sort_keys=True),
+            "adjustment_params": dumps_json(params, indent=None, sort_keys=True),
             "adjusted_top1_pick": ranking["top1_pick"],
             "adjusted_top1_label": LABEL_NAMES[ranking["top1_pick"]],
             "adjusted_second_pick": ranking["second_pick"],
@@ -107,8 +109,8 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _write_json(path: Path, rows: list[dict]) -> None:
-    cleaned = [{field: row.get(field) for field in ADJUSTED_PREDICTION_FIELDS} for row in rows]
-    path.write_text(json.dumps(cleaned, ensure_ascii=False, indent=2), encoding="utf-8")
+    cleaned = [_json_prediction_row(row) for row in rows]
+    write_json(path, cleaned)
 
 
 def _write_markdown(path: Path, summary: dict, rows: list[dict]) -> None:
@@ -137,8 +139,8 @@ def _write_markdown(path: Path, summary: dict, rows: list[dict]) -> None:
         "",
         "## Top1 分布",
         "",
-        f"- base: {json.dumps(summary['base_top1_distribution'], ensure_ascii=False, sort_keys=True)}",
-        f"- adjusted: {json.dumps(summary['adjusted_top1_distribution'], ensure_ascii=False, sort_keys=True)}",
+        f"- base: {dumps_json(summary['base_top1_distribution'], indent=None, sort_keys=True)}",
+        f"- adjusted: {dumps_json(summary['adjusted_top1_distribution'], indent=None, sort_keys=True)}",
         "",
         "## Changed Picks",
         "",
@@ -146,8 +148,8 @@ def _write_markdown(path: Path, summary: dict, rows: list[dict]) -> None:
         "|---|---|---|---|---|---|---|",
     ])
     for row in summary["changed_picks"]:
-        base_probs = row["base_probabilities"]
-        adjusted_probs = row["adjusted_probabilities"]
+        base_probs = f"{_fmt(row.get('base_home_win_prob'))}/{_fmt(row.get('base_draw_prob'))}/{_fmt(row.get('base_away_win_prob'))}"
+        adjusted_probs = f"{_fmt(row.get('adjusted_home_win_prob'))}/{_fmt(row.get('adjusted_draw_prob'))}/{_fmt(row.get('adjusted_away_win_prob'))}"
         lines.append(
             f"| {row.get('match_id', '')} | {row.get('home_team', '')} | {row.get('away_team', '')} | "
             f"{row.get('top1_label', '')} | {row.get('adjusted_top1_label', '')} | {base_probs} | {adjusted_probs} |"
@@ -169,6 +171,26 @@ def _implied_probs(row: dict) -> dict | None:
     return values
 
 
+def _json_prediction_row(row: dict) -> dict:
+    output = {field: row.get(field) for field in ADJUSTED_PREDICTION_FIELDS}
+    for field in ("issue_id", "match_id"):
+        output[field] = "" if row.get(field) is None else str(row.get(field))
+    for field in ("top1_pick", "second_pick", "adjusted_top1_pick", "adjusted_second_pick"):
+        output[field] = _optional_int(row.get(field), field)
+    for field in (
+        "odds_home", "odds_draw", "odds_away",
+        "implied_home_win_prob", "implied_draw_prob", "implied_away_win_prob",
+        "base_home_win_prob", "base_draw_prob", "base_away_win_prob",
+        "adjusted_home_win_prob", "adjusted_draw_prob", "adjusted_away_win_prob",
+        "probability_gap", "prob_diff_home", "prob_diff_draw", "prob_diff_away",
+        "adjusted_probability_gap",
+    ):
+        output[field] = _optional_float(row.get(field))
+    output["neutral"] = _optional_bool(row.get("neutral"))
+    output["adjustment_params"] = _json_params(row.get("adjustment_params"))
+    return output
+
+
 def _prob_only(result: dict) -> dict[str, float]:
     return {key: float(result[key]) for key in ("home", "draw", "away")}
 
@@ -187,16 +209,20 @@ def _avg_values(values: list[float]) -> float:
 
 def _changed_pick_summary(row: dict) -> dict:
     return {
-        "issue_id": row.get("issue_id", ""),
-        "match_id": row.get("match_id", ""),
+        "issue_id": "" if row.get("issue_id") is None else str(row.get("issue_id")),
+        "match_id": "" if row.get("match_id") is None else str(row.get("match_id")),
         "home_team": row.get("home_team", ""),
         "away_team": row.get("away_team", ""),
-        "top1_pick": row.get("top1_pick", ""),
+        "top1_pick": _optional_int(row.get("top1_pick"), "top1_pick"),
         "top1_label": row.get("top1_label", ""),
-        "adjusted_top1_pick": row.get("adjusted_top1_pick", ""),
+        "adjusted_top1_pick": _optional_int(row.get("adjusted_top1_pick"), "adjusted_top1_pick"),
         "adjusted_top1_label": row.get("adjusted_top1_label", ""),
-        "base_probabilities": f"{_fmt(row.get('base_home_win_prob'))}/{_fmt(row.get('base_draw_prob'))}/{_fmt(row.get('base_away_win_prob'))}",
-        "adjusted_probabilities": f"{_fmt(row.get('adjusted_home_win_prob'))}/{_fmt(row.get('adjusted_draw_prob'))}/{_fmt(row.get('adjusted_away_win_prob'))}",
+        "base_home_win_prob": _optional_float(row.get("base_home_win_prob")),
+        "base_draw_prob": _optional_float(row.get("base_draw_prob")),
+        "base_away_win_prob": _optional_float(row.get("base_away_win_prob")),
+        "adjusted_home_win_prob": _optional_float(row.get("adjusted_home_win_prob")),
+        "adjusted_draw_prob": _optional_float(row.get("adjusted_draw_prob")),
+        "adjusted_away_win_prob": _optional_float(row.get("adjusted_away_win_prob")),
     }
 
 
@@ -213,8 +239,34 @@ def _optional_float(value: object) -> float | None:
     return float(str(value).strip())
 
 
+def _optional_int(value: object, field: str) -> int | None:
+    if value is None or str(value).strip() == "":
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        raise ValueError(f"{field} must be an integer") from None
+
+
 def _parse_bool(value: object) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def _optional_bool(value: object) -> bool | None:
+    if value is None or str(value).strip() == "":
+        return None
+    return _parse_bool(value)
+
+
+def _json_params(value: object) -> dict:
+    if isinstance(value, dict):
+        return value
+    if value is None or str(value).strip() == "":
+        return {}
+    parsed = json.loads(str(value))
+    if not isinstance(parsed, dict):
+        raise ValueError("adjustment_params must be a JSON object")
+    return parsed
 
 
 def _fmt(value: object) -> str:

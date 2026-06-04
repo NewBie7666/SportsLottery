@@ -315,6 +315,7 @@ python -m sporttery_national.cli adjust --predictions reports/predictions/predic
 
 - `reports/adjustments/adjusted_predictions.csv`
 - `reports/adjustments/adjusted_predictions.json`
+- `reports/adjustments/adjustment_summary.json`
 - `reports/adjustments/adjustment_report.md`
 
 `adjusted_predictions` 会保留原始 `base_*` 和原始 `top1_*` 字段，并新增 `adjusted_top1_pick`、`adjusted_top1_label`、`adjusted_second_pick`、`adjusted_probability_gap`、`adjusted_confidence` 等实验字段。`base_*` 永远不被覆盖。
@@ -330,3 +331,23 @@ python -m sporttery_national.cli settle --predictions reports/adjustments/adjust
 当 settlement 输入中存在 `adjusted_top1_pick` 时，必须同时存在可解析的 `adjusted_home_win_prob`、`adjusted_draw_prob`、`adjusted_away_win_prob`；否则直接失败。校验通过后，`adjusted_hit` 使用 adjusted top1 判断，`base_hit` 仍使用原始 `top1_pick`。这样可以比较 base vs adjusted。
 
 短期 adjusted 表现更好不代表可以直接写回模型。V1.4 的定位是本地研究工具，用大量样本检验某种后处理策略是否稳定改善表现。
+
+## 前端可读取输出文件
+
+前端或后续网页模块优先读取 JSON 文件，Markdown 仅用于展示和人工复盘：
+
+- `reports/predictions/predictions.json`：当期比赛预测结果。
+- `reports/backtests/backtest_summary.json`：回测汇总、偏差诊断、分组指标和校准分桶。
+- `reports/backtests/backtest_details.json`：逐场回测明细。
+- `reports/settlements/settlements.json`：逐场赛后结算明细。
+- `reports/settlements/settlement_summary.json`：赛后结算汇总。
+- `reports/adjustments/adjusted_predictions.json`：参数实验后的逐场预测结果。
+- `reports/adjustments/adjustment_summary.json`：参数实验汇总，适合前端结构化读取。
+- `reports/adjustments/adjustment_report.md`：参数实验展示型报告，不建议作为结构化数据源。
+
+JSON 类型约定：
+
+- `issue_id` 和 `match_id` 始终为字符串，保留前导 0。
+- 概率、odds、probability gap、Log Loss、Brier、Accuracy 等指标为 JSON number；缺失数值为 `null`。
+- `top1_pick`、`second_pick`、`actual_result`、`adjusted_top1_pick`、`adjusted_second_pick` 等结果编码为 JSON number。
+- 所有 JSON 输出禁止 `NaN`、`Infinity`、`-Infinity`；如出现非法浮点值，写出阶段会直接失败。

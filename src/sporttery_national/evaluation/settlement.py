@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import csv
-import json
 import math
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 from sporttery_national.constants import LABELS, LABEL_AWAY, LABEL_DRAW, LABEL_HOME, LABEL_NAMES, SETTLEMENT_FIELDS
+from sporttery_national.utils.json_io import write_json
 from sporttery_national.utils.validation import require_columns
 
 REQUIRED_RESULT_COLUMNS = {"issue_id", "match_id", "home_score", "away_score"}
@@ -202,7 +202,7 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _write_json(path: Path, data: object) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_json(path, data)
 
 
 def _write_markdown(path: Path, rows: list[dict], summary: dict) -> None:
