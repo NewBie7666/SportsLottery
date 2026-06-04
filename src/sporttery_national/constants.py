@@ -26,3 +26,12 @@ SETTLEMENT_FIELDS = [
     "base_log_loss", "adjusted_log_loss", "base_brier", "adjusted_brier",
     "model_version", "feature_version", "settled_at",
 ]
+
+BACKTEST_DETAIL_FIELDS = [
+    "synthetic_backtest_id", "date", "competition", "home_team", "away_team", "neutral",
+    "actual_result", "actual_label",
+    "base_home_win_prob", "base_draw_prob", "base_away_win_prob",
+    "top1_pick", "top1_label", "top1_prob", "second_pick", "second_prob", "probability_gap", "confidence",
+    "hit", "actual_prob", "log_loss", "brier",
+    "model_version", "feature_version",
+]

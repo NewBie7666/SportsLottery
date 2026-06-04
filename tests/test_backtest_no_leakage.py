@@ -33,7 +33,13 @@ class BacktestTests(unittest.TestCase):
             self.assertIn("log_loss", summary)
             self.assertIn("brier_score", summary)
             self.assertIn("top1_accuracy", summary)
+            self.assertIn("total_matches", summary)
+            self.assertIn("metadata", summary)
             self.assertGreater(summary["matches"], 0)
+            self.assertTrue((root / "reports" / "backtest_summary.json").exists())
+            self.assertTrue((root / "reports" / "backtest_details.csv").exists())
+            self.assertTrue((root / "reports" / "backtest_details.json").exists())
+            self.assertTrue((root / "reports" / "backtest_report.md").exists())
 
 
 if __name__ == "__main__":

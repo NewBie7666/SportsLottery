@@ -242,3 +242,31 @@ python -m sporttery_national.cli settle --predictions reports/predictions/predic
 ```
 
 本项目只提供概率研究和赛后评估，不提供投注建议，不承诺中奖或盈利。
+
+## V1.3 回测诊断报告
+
+V1.3 增强 `backtest` 输出，用于分析模型在国家队胜平负预测中的偏差和弱点。该功能只做模型诊断，不修改训练主逻辑，也不提供投注建议。
+
+运行回测：
+
+```powershell
+python -m sporttery_national.cli backtest --data data/processed/national_matches.jsonl --model-dir models/national --output reports/backtests
+```
+
+输出文件：
+
+- `reports/backtests/backtest_details.csv`：逐场回测明细，适合排查单场预测、概率、命中情况和错误样例。
+- `reports/backtests/backtest_details.json`：逐场明细 JSON，便于后续程序读取。
+- `reports/backtests/backtest_summary.json`：总体指标、分组指标、偏差诊断和校准分桶，供后续网页或调参模块读取。
+- `reports/backtests/backtest_report.md`：人工复盘报告，包含混淆矩阵、分组表现、校准分桶和高置信错误样例。
+
+重点指标：
+
+- `draw_recall`：真实结果为平局时，模型 top1 也预测平局的比例，可用于判断模型是否低估平局。
+- `draw_bias_diagnostics`：比较真实平局率、预测平局率和平均平局概率，辅助定位平局偏差。
+- `prediction_bias`：比较真实结果分布和 top1 预测分布，查看主胜/平/客胜是否系统性偏移。
+- `by_confidence`：按 high / medium / low 分组，判断 confidence 是否可靠。
+- `calibration_bins`：按 top1 概率分桶，观察模型给出某个概率水平时的实际命中率。
+- `recent_windows`：查看 2000 年以来、最近 10 年、最近 5 年的表现变化。
+
+Markdown 报告中的 competition 分组只展示样本数较大的赛事，完整赛事表现以 `backtest_summary.json` 为准。
