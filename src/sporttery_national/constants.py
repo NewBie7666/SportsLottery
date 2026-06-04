@@ -15,3 +15,14 @@ PREDICTION_FIELDS = [
     "prob_diff_home", "prob_diff_draw", "prob_diff_away",
     "model_version", "feature_version", "created_at",
 ]
+
+SETTLEMENT_FIELDS = [
+    "issue_id", "match_id", "home_team", "away_team", "competition",
+    "home_score", "away_score", "actual_result", "actual_label",
+    "top1_pick", "top1_label", "second_pick", "confidence", "probability_gap",
+    "base_home_win_prob", "base_draw_prob", "base_away_win_prob",
+    "adjusted_home_win_prob", "adjusted_draw_prob", "adjusted_away_win_prob",
+    "base_hit", "adjusted_hit", "base_actual_prob", "adjusted_actual_prob",
+    "base_log_loss", "adjusted_log_loss", "base_brier", "adjusted_brier",
+    "model_version", "feature_version", "settled_at",
+]

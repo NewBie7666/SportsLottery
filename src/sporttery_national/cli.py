@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from sporttery_national.evaluation.backtester import backtest as run_backtest
+from sporttery_national.evaluation.settlement import load_predictions_csv, load_results_csv, settle_predictions, write_settlement_outputs
 from sporttery_national.export.csv_exporter import write_predictions_csv
 from sporttery_national.export.json_exporter import write_predictions_json
 from sporttery_national.export.markdown_report import write_markdown_report
@@ -47,6 +48,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--history")
     p.add_argument("--aliases")
 
+    p = sub.add_parser("settle")
+    p.add_argument("--predictions", required=True)
+    p.add_argument("--results", required=True)
+    p.add_argument("--output", required=True)
+
     p = sub.add_parser("teams")
     p.add_argument("--query", required=True)
     p.add_argument("--aliases")
@@ -69,6 +75,10 @@ def main(argv: list[str] | None = None) -> int:
         write_predictions_json(output / "predictions.json", rows)
         write_markdown_report(output / "predictions.md", rows)
         print(f"Wrote {len(rows)} predictions to {output}")
+    elif args.command == "settle":
+        rows = settle_predictions(load_predictions_csv(args.predictions), load_results_csv(args.results))
+        summary = write_settlement_outputs(args.output, rows)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "teams":
         print(json.dumps(TeamNormalizer(args.aliases).query(args.query), ensure_ascii=False, indent=2))
     return 0

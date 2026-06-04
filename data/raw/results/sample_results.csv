@@ -1,0 +1,4 @@
+issue_id,match_id,home_score,away_score,result_status,notes
+202606,001,1,2,final,sample away win
+202606,002,1,0,final,sample home win
+202606,003,1,1,final,sample draw

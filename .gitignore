@@ -10,6 +10,7 @@ build/
 
 data/raw/internationals/*
 data/raw/lottery_fixtures/*
+data/raw/results/*
 data/raw/internationals/openfootball-internationals/
 data/processed/*
 models/national/*
@@ -18,6 +19,8 @@ reports/*
 !data/raw/internationals/.gitkeep
 !data/raw/lottery_fixtures/.gitkeep
 !data/raw/lottery_fixtures/sample_issue.csv
+!data/raw/results/.gitkeep
+!data/raw/results/sample_results.csv
 !data/processed/.gitkeep
 !models/national/.gitkeep
 !reports/
@@ -27,3 +30,6 @@ reports/backtests/*
 !reports/predictions/
 reports/predictions/*
 !reports/predictions/.gitkeep
+!reports/settlements/
+reports/settlements/*
+!reports/settlements/.gitkeep

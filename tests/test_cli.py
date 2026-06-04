@@ -21,6 +21,11 @@ class CliTests(unittest.TestCase):
             main(["fetch-history", "--help"])
         self.assertEqual(ctx.exception.code, 0)
 
+    def test_settle_accepts_arguments(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            main(["settle", "--help"])
+        self.assertEqual(ctx.exception.code, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

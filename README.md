@@ -174,3 +174,71 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 - 预测结果里 `base_*` 和 `adjusted_*` 是否都存在。
 - V1 中 `adjusted_*` 是否等于 `base_*`。
 - 每场三项概率相加是否接近 1。
+
+## V1.2 赛后结果录入与结算
+
+V1.2 新增 `settle` 命令，用于把预测结果和赛后比分合并，评估预测表现。赛果只用于结算评估，不会回写训练数据，也不会触发模型重训。
+
+赛果 CSV 示例：
+
+```csv
+issue_id,match_id,home_score,away_score,result_status,notes
+202606,001,1,2,final,sample away win
+```
+
+必填列：
+
+- `issue_id`
+- `match_id`
+- `home_score`
+- `away_score`
+
+可选列：
+
+- `result_status`
+- `notes`
+
+`issue_id` 和 `match_id` 会始终按字符串读取和匹配，前导 `0` 会被保留。`home_score` / `away_score` 必须是非负整数。比分会转换为实际赛果：
+
+- 主队进球更多：`actual_result = 3`
+- 双方进球相同：`actual_result = 1`
+- 客队进球更多：`actual_result = 0`
+
+运行结算：
+
+```powershell
+python -m sporttery_national.cli settle --predictions reports/predictions/predictions.csv --results data/raw/results/sample_results.csv --output reports/settlements
+```
+
+输出文件：
+
+- `reports/settlements/settlements.csv`
+- `reports/settlements/settlements.json`
+- `reports/settlements/settlements.md`
+- `reports/settlements/settlement_summary.json`
+
+如果预测文件中存在某场比赛，但赛果 CSV 中缺少对应的 `issue_id + match_id`，`settle` 会直接失败并列出缺失 key，不生成部分结算报告。predictions 和 results 内部也都会检查 `issue_id + match_id` 是否唯一；重复 key 会直接报错。
+
+核心指标：
+
+- `Top1 Accuracy`：`top1_pick == actual_result` 的比例。
+- `Log Loss`：`-log(max(actual_prob, 1e-15))`，其中 `actual_prob` 是实际赛果对应的预测概率。
+- `Brier Score`：三分类 one-hot 形式的 `sum((p_i - y_i)^2)`，不除以类别数。
+- `base` 使用模型原始概率 `base_*`。
+- `adjusted` 使用调参后概率 `adjusted_*`。
+
+当前 V1.2 仍不实现真实用户调参，因此 `adjusted_* == base_*`，`adjusted_hit == base_hit`。后续调参模块上线后，结算报告可直接比较 base 与 adjusted 的差异。
+
+样例结算脚本：
+
+```powershell
+.\scripts\settle_sample.ps1
+```
+
+如果 `reports/predictions/predictions.csv` 不存在，先运行：
+
+```powershell
+.\scripts\predict_sample.ps1
+```
+
+本项目只提供概率研究和赛后评估，不提供投注建议，不承诺中奖或盈利。
