@@ -39,3 +39,12 @@ reports/adjustments/*
 !reports/settlements_adjusted/
 reports/settlements_adjusted/*
 !reports/settlements_adjusted/.gitkeep
+!reports/draw_experiments/
+reports/draw_experiments/*
+!reports/draw_experiments/.gitkeep
+
+apps/web/node_modules/
+apps/web/dist/
+apps/web/public/data/**
+!apps/web/public/data/
+!apps/web/public/data/.gitkeep

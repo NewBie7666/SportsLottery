@@ -10,6 +10,7 @@ from sporttery_national.evaluation.settlement import load_predictions_csv, load_
 from sporttery_national.export.csv_exporter import write_predictions_csv
 from sporttery_national.export.json_exporter import write_predictions_json
 from sporttery_national.export.markdown_report import write_markdown_report
+from sporttery_national.experiments.draw_recall import run_draw_recall_experiment
 from sporttery_national.ingest.fixture_loader import load_fixtures
 from sporttery_national.ingest.history_fetcher import fetch_history
 from sporttery_national.ingest.history_loader import import_history
@@ -59,6 +60,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--params", required=True)
     p.add_argument("--output", required=True)
 
+    p = sub.add_parser("draw-experiment")
+    p.add_argument("--backtest-details", required=True)
+    p.add_argument("--output", required=True)
+
     p = sub.add_parser("teams")
     p.add_argument("--query", required=True)
     p.add_argument("--aliases")
@@ -87,6 +92,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "adjust":
         summary = run_adjustment_experiment(args.predictions, args.params, args.output)
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
+    elif args.command == "draw-experiment":
+        summary = run_draw_recall_experiment(args.backtest_details, args.output)
         print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "teams":
         print(json.dumps(TeamNormalizer(args.aliases).query(args.query), ensure_ascii=False, indent=2))

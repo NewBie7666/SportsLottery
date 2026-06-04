@@ -124,7 +124,7 @@ V1.1 只增强预测报告解释质量，不修改训练主逻辑，不实现真
 
 `risk_note` 必须保留声明：`仅供概率研究，不承诺中奖或盈利。`
 
-禁止输出 `必中`、`稳赚`、`保证中奖`、`推荐下注`、`稳胆`、`必买` 等投注承诺或诱导用语。
+禁止输出任何中奖承诺、收益承诺或投注诱导用语。
 
 ## V1 CLI 验证流程
 
@@ -332,6 +332,38 @@ python -m sporttery_national.cli settle --predictions reports/adjustments/adjust
 
 短期 adjusted 表现更好不代表可以直接写回模型。V1.4 的定位是本地研究工具，用大量样本检验某种后处理策略是否稳定改善表现。
 
+## V1.6 平局召回专项实验
+
+V1.6 新增 `draw-experiment` 命令，用已有 `backtest_details.json` 做本地后处理实验，专项诊断模型几乎不把平局作为 Top1 的问题。该实验不修改 base 模型，不重训，不写回训练数据，也不改变常规回测逻辑。
+
+运行实验：
+
+```powershell
+python -m sporttery_national.cli draw-experiment --backtest-details reports/backtests/backtest_details.json --output reports/draw_experiments
+```
+
+输出文件：
+
+- `reports/draw_experiments/draw_experiment_results.csv`：每组参数一行，便于筛选和对比。
+- `reports/draw_experiments/draw_experiment_summary.json`：网格参数、base 基准指标、全部实验结果和 candidate 策略。
+- `reports/draw_experiments/draw_experiment_report.md`：人工阅读报告，展示平局召回变化和候选策略。
+
+实验网格固定为：
+
+- `draw_min_prob`: `0.26, 0.28, 0.30, 0.32`
+- `draw_gap_trigger`: `0.04, 0.06, 0.08, 0.10`
+- `draw_bias`: `0.00, 0.02, 0.04, 0.06`
+
+后处理逻辑只作用于报告分析：先对平局概率应用 `draw_bias` 并归一化；当调整后平局概率达到阈值，且与当前最高概率差距足够小，就把 adjusted Top1 设为平局。实验会比较 base 和 adjusted 的 Top1 Accuracy、Draw Recall、Log Loss、Brier、变化场次等指标。
+
+candidate 策略需要同时满足：
+
+- 平局召回高于 base。
+- adjusted Top1 Accuracy 不低于 base Top1 Accuracy 减 `0.02`。
+- adjusted 平均 Log Loss 不高于 base 平均 Log Loss 加 `0.03`。
+
+本功能只用于概率研究和模型诊断，不提供投注建议，不承诺中奖或盈利。
+
 ## 前端可读取输出文件
 
 前端或后续网页模块优先读取 JSON 文件，Markdown 仅用于展示和人工复盘：
@@ -351,3 +383,42 @@ JSON 类型约定：
 - 概率、odds、probability gap、Log Loss、Brier、Accuracy 等指标为 JSON number；缺失数值为 `null`。
 - `top1_pick`、`second_pick`、`actual_result`、`adjusted_top1_pick`、`adjusted_second_pick` 等结果编码为 JSON number。
 - 所有 JSON 输出禁止 `NaN`、`Infinity`、`-Infinity`；如出现非法浮点值，写出阶段会直接失败。
+
+## V1.5 只读网页展示
+
+V1.5 新增 `apps/web`，用于只读展示 CLI 已生成的 JSON 报告。网页不做预测计算，不修改模型，不写入训练数据，也不提供投注建议。
+
+推荐流程：
+
+```powershell
+.\scripts\predict_sample.ps1
+.\scripts\settle_sample.ps1
+.\scripts\adjust_sample.ps1
+.\scripts\settle_adjusted_sample.ps1
+.\scripts\export_web_data.ps1
+cd apps/web
+npm install
+npm run dev
+```
+
+如果需要刷新完整回测数据，先运行：
+
+```powershell
+.\scripts\smoke_test_v1.ps1
+.\scripts\export_web_data.ps1
+```
+
+`scripts\export_web_data.ps1` 会把现有 reports JSON 快照复制到 `apps/web/public/data/`。缺失文件只输出 warning，网页对应区域会显示“暂无数据，请先运行对应 CLI 脚本”。
+
+网页读取的主要文件：
+
+- `apps/web/public/data/predictions.json`
+- `apps/web/public/data/backtest_summary.json`
+- `apps/web/public/data/backtest_details.json`
+- `apps/web/public/data/settlement_summary.json`
+- `apps/web/public/data/settlements.json`
+- `apps/web/public/data/adjustment_summary.json`
+- `apps/web/public/data/adjusted_predictions.json`
+- `apps/web/public/data/settlements_adjusted/settlement_summary.json`
+
+本目录中的 JSON 快照属于运行产物，默认不提交；仓库只保留 `apps/web/public/data/.gitkeep`。

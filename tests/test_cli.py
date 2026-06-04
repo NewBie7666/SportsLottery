@@ -31,6 +31,11 @@ class CliTests(unittest.TestCase):
             main(["adjust", "--help"])
         self.assertEqual(ctx.exception.code, 0)
 
+    def test_draw_experiment_accepts_arguments(self) -> None:
+        with self.assertRaises(SystemExit) as ctx:
+            main(["draw-experiment", "--help"])
+        self.assertEqual(ctx.exception.code, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
