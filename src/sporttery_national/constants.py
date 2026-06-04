@@ -1,0 +1,17 @@
+LABEL_HOME = 3
+LABEL_DRAW = 1
+LABEL_AWAY = 0
+LABELS = [LABEL_HOME, LABEL_DRAW, LABEL_AWAY]
+LABEL_NAMES = {LABEL_HOME: "主胜", LABEL_DRAW: "平", LABEL_AWAY: "客胜"}
+
+PREDICTION_FIELDS = [
+    "issue_id", "match_id", "date", "kickoff", "competition", "venue", "neutral",
+    "home_team_raw", "away_team_raw", "home_team", "away_team",
+    "odds_home", "odds_draw", "odds_away",
+    "implied_home_win_prob", "implied_draw_prob", "implied_away_win_prob",
+    "base_home_win_prob", "base_draw_prob", "base_away_win_prob",
+    "adjusted_home_win_prob", "adjusted_draw_prob", "adjusted_away_win_prob",
+    "top1_pick", "top1_label", "confidence", "risk_note",
+    "prob_diff_home", "prob_diff_draw", "prob_diff_away",
+    "model_version", "feature_version", "created_at",
+]
