@@ -87,9 +87,90 @@ odds_home, odds_draw, odds_away,
 implied_home_win_prob, implied_draw_prob, implied_away_win_prob,
 base_home_win_prob, base_draw_prob, base_away_win_prob,
 adjusted_home_win_prob, adjusted_draw_prob, adjusted_away_win_prob,
-top1_pick, top1_label, confidence, risk_note,
+top1_pick, second_pick, probability_gap, top1_label, confidence, risk_note,
 prob_diff_home, prob_diff_draw, prob_diff_away,
 model_version, feature_version, created_at
 ```
 
 后续网页和用户调参模块应读取这些稳定字段。调参层只允许修改 `adjusted_*` 概率，不允许修改训练数据或模型权重。
+
+## V1.1 预测解释规则
+
+V1.1 只增强预测报告解释质量，不修改训练主逻辑，不实现真实用户调参，不提供投注建议。
+
+### confidence
+
+`confidence` 基于首选概率、第二概率和风险场景计算：
+
+- `max_prob >= 0.55` 且 `max_prob - second_prob >= 0.18`：`high`
+- `max_prob >= 0.45` 且 `max_prob - second_prob >= 0.10`：`medium`
+- 其他：`low`
+- 如果赛事是 `Friendly` / `友谊赛`，最高只给 `medium`
+- 如果 `neutral=True`，最高只给 `medium`
+
+### second_pick / probability_gap
+
+- `second_pick` 是第二高概率对应的胜平负结果，取值仍为 `3/1/0`
+- `probability_gap = top1_prob - second_prob`
+
+### risk_note
+
+`risk_note` 会按每场比赛生成中文风险说明，可能包含：
+
+- 首选概率与第二概率的差距说明
+- 友谊赛、预选赛、杯赛、中立场等赛事风险说明
+- 模型概率与官方隐含概率的对比说明
+- 未提供官方奖金时的市场概率对比缺失说明
+
+`risk_note` 必须保留声明：`仅供概率研究，不承诺中奖或盈利。`
+
+禁止输出 `必中`、`稳赚`、`保证中奖`、`推荐下注`、`稳胆`、`必买` 等投注承诺或诱导用语。
+
+## V1 CLI 验证流程
+
+项目提供两个 PowerShell 脚本，用于在 Windows 上重复验证 CLI MVP。
+
+如果脚本执行被当前 PowerShell 策略拦截，先在当前窗口运行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+完整 smoke test：
+
+```powershell
+.\scripts\smoke_test_v1.ps1
+```
+
+该脚本会依次执行：
+
+1. 显示 Python 版本。
+2. 运行 `python -m unittest discover -s tests -v`。
+3. 运行 `python -m compileall src tests`。
+4. 同步或更新 `openfootball/internationals`。
+5. 导入真实国家队历史数据到 `data/processed/national_matches.jsonl`。
+6. 训练 `models/national`。
+7. 回测并输出到 `reports/backtests`。
+
+样例竞彩预测：
+
+```powershell
+.\scripts\predict_sample.ps1
+```
+
+该脚本使用 `data/raw/lottery_fixtures/sample_issue.csv`，读取已训练的 `models/national`，并在 `reports/predictions` 下生成：
+
+- `predictions.csv`
+- `predictions.json`
+- `predictions.md`
+
+验证时重点检查：
+
+- 单元测试是否全部 OK。
+- `import-history` 是否保留约 49,000 场国家队比赛。
+- `train` 是否生成 `models/national` 下的模型状态文件。
+- `backtest` 是否输出 Top1 Accuracy、Log Loss、Brier Score。
+- `predict` 是否生成 CSV / JSON / Markdown。
+- 预测结果里 `base_*` 和 `adjusted_*` 是否都存在。
+- V1 中 `adjusted_*` 是否等于 `base_*`。
+- 每场三项概率相加是否接近 1。

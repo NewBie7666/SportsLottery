@@ -6,9 +6,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sporttery_national.adjustment.interface import apply_adjustment
-from sporttery_national.constants import LABELS, LABEL_NAMES
+from sporttery_national.constants import LABEL_NAMES
 from sporttery_national.features.elo import EloRatings
 from sporttery_national.features.feature_builder import FeatureBuilder
+from sporttery_national.models.prediction_explain import build_risk_note, confidence_from_prediction, rank_outcomes
 from sporttery_national.models.trainer import FEATURE_VERSION, MODEL_VERSION
 from sporttery_national.utils.storage import read_records
 
@@ -30,8 +31,14 @@ def predict_fixtures(fixtures: list[dict], model_dir: str | Path, history_path: 
         features = builder.build_before_match({"home_team": fixture["home_team"], "away_team": fixture["away_team"], "date": fixture["date"], "competition": fixture.get("competition", ""), "neutral": fixture.get("neutral", False)})
         base = _probabilities(features)
         adjusted = apply_adjustment(base)
-        top_label = max(LABELS, key=lambda label: adjusted[_key(label)])
-        confidence = _confidence(sorted(adjusted.values(), reverse=True))
+        ranking = rank_outcomes(adjusted)
+        top_label = ranking["top1_pick"]
+        confidence = confidence_from_prediction(
+            ranking["top1_prob"],
+            ranking["second_prob"],
+            competition=fixture.get("competition", ""),
+            neutral=fixture.get("neutral", False),
+        )
         row = dict(fixture)
         row.update({
             "base_home_win_prob": base["home"],
@@ -41,9 +48,19 @@ def predict_fixtures(fixtures: list[dict], model_dir: str | Path, history_path: 
             "adjusted_draw_prob": adjusted["draw"],
             "adjusted_away_win_prob": adjusted["away"],
             "top1_pick": top_label,
+            "second_pick": ranking["second_pick"],
+            "probability_gap": ranking["probability_gap"],
             "top1_label": LABEL_NAMES[top_label],
             "confidence": confidence,
-            "risk_note": "概率分析结果，仅供研究；不承诺中奖或盈利。",
+            "risk_note": build_risk_note(
+                top1_pick=top_label,
+                top1_prob=ranking["top1_prob"],
+                second_prob=ranking["second_prob"],
+                competition=fixture.get("competition", ""),
+                neutral=fixture.get("neutral", False),
+                fixture=fixture,
+                base_probs=base,
+            ),
             "prob_diff_home": _diff(adjusted["home"], fixture.get("implied_home_win_prob")),
             "prob_diff_draw": _diff(adjusted["draw"], fixture.get("implied_draw_prob")),
             "prob_diff_away": _diff(adjusted["away"], fixture.get("implied_away_win_prob")),
@@ -63,19 +80,6 @@ def _probabilities(features: dict) -> dict[str, float]:
     values = [math.exp(home_logit), math.exp(draw_logit), math.exp(away_logit)]
     total = sum(values)
     return {"home": values[0] / total, "draw": values[1] / total, "away": values[2] / total}
-
-
-def _key(label: int) -> str:
-    return "home" if label == 3 else "draw" if label == 1 else "away"
-
-
-def _confidence(sorted_probs: list[float]) -> str:
-    gap = sorted_probs[0] - sorted_probs[1]
-    if gap >= 0.18:
-        return "high"
-    if gap >= 0.08:
-        return "medium"
-    return "low"
 
 
 def _diff(prob: float, implied: float | None) -> float | None:

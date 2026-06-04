@@ -17,6 +17,7 @@ reports/*
 
 !data/raw/internationals/.gitkeep
 !data/raw/lottery_fixtures/.gitkeep
+!data/raw/lottery_fixtures/sample_issue.csv
 !data/processed/.gitkeep
 !models/national/.gitkeep
 !reports/

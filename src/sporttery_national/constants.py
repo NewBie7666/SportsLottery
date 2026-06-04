@@ -11,7 +11,7 @@ PREDICTION_FIELDS = [
     "implied_home_win_prob", "implied_draw_prob", "implied_away_win_prob",
     "base_home_win_prob", "base_draw_prob", "base_away_win_prob",
     "adjusted_home_win_prob", "adjusted_draw_prob", "adjusted_away_win_prob",
-    "top1_pick", "top1_label", "confidence", "risk_note",
+    "top1_pick", "second_pick", "probability_gap", "top1_label", "confidence", "risk_note",
     "prob_diff_home", "prob_diff_draw", "prob_diff_away",
     "model_version", "feature_version", "created_at",
 ]

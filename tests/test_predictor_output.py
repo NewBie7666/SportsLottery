@@ -32,7 +32,21 @@ class PredictorOutputTests(unittest.TestCase):
                 self.assertIn(field, row)
             self.assertAlmostEqual(row["base_home_win_prob"] + row["base_draw_prob"] + row["base_away_win_prob"], 1.0)
             self.assertEqual(row["base_home_win_prob"], row["adjusted_home_win_prob"])
+            self.assertEqual(row["base_draw_prob"], row["adjusted_draw_prob"])
+            self.assertEqual(row["base_away_win_prob"], row["adjusted_away_win_prob"])
             self.assertIn(row["top1_pick"], {3, 1, 0})
+            self.assertIn(row["second_pick"], {3, 1, 0})
+            self.assertNotEqual(row["top1_pick"], row["second_pick"])
+            probs_by_pick = {
+                3: row["adjusted_home_win_prob"],
+                1: row["adjusted_draw_prob"],
+                0: row["adjusted_away_win_prob"],
+            }
+            sorted_probs = sorted(probs_by_pick.items(), key=lambda item: (-item[1], item[0]))
+            self.assertEqual(row["top1_pick"], sorted_probs[0][0])
+            self.assertEqual(row["second_pick"], sorted_probs[1][0])
+            self.assertAlmostEqual(row["probability_gap"], sorted_probs[0][1] - sorted_probs[1][1])
+            self.assertIn("仅供概率研究，不承诺中奖或盈利。", row["risk_note"])
 
 
 if __name__ == "__main__":
